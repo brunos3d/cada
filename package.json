@@ -7,14 +7,14 @@
     "cada": "./dist/index.js"
   },
   "scripts": {
-    "dev": "tsnd --transpile-only --respawn --no-notify --ignore-watch node_modules ./src/index.ts",
+    "dev": "tsnd --transpile-only --no-notify --ignore-watch node_modules ./src/index.ts",
     "build": "yarn tsc",
     "deploy": "yarn && yarn build && yarn start",
     "start": "env-cmd -f .env node ./dist/index.js",
     "docker": "docker-compose --env-file .env -f docker-compose.yml up -d --build"
   },
   "dependencies": {
-    "cardano-cli-async": "git+ssh://git@github.com:BrunoS3D/cardano-cli-async.git",
+    "cardano-cli-async": "git+https://gitlab+deploy-token-824728:ZKLnEigc4Ngy_f-z6Gwk@gitlab.com/BrunoS3D/cardano-cli-async#main",
     "chalk": "2.4.1",
     "commander": "^9.0.0",
     "dotenv": "^14.3.2",

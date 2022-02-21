@@ -42,10 +42,7 @@ walletCmd
   .action(async (accounts: string[]) => {
     accounts.forEach(async (account: string) => {
       const wallet = await ccli.wallet(account);
-      console.log(
-        chalk.green(`'${account}' balance:`),
-        await swr(`wallet balance ${account}`, async () => JSON.stringify(await wallet.balance(), null, 2))
-      );
+      console.log(chalk.green(`'${account}' balance:`), await swr(wallet.paymentAddr, async () => JSON.stringify(await wallet.balance(), null, 2)));
     });
   });
 
@@ -86,7 +83,7 @@ sendCmd
       `Sending ${chalk.blue(`${amount} ADA`)} from ${chalk.yellow(from)}' to\n${to.map((addr: string) => `'${chalk.yellow(addr)}'`).join('\n')}`
     );
     try {
-      const tx = sendOneToMany(from, to, amount);
+      const tx = await sendOneToMany(from, to, amount);
       console.log(chalk.green(`Transaction:`), tx);
     } catch (error) {
       console.log(chalk.red(`Error:`), error);

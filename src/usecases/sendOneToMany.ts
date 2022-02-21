@@ -9,9 +9,11 @@ export default async function sendOneToMany(senderAccount: string, receiverAddre
   const senderWallet = await ccli.wallet(senderAccount);
   const senderCachedUtxos = await swr(senderWallet.paymentAddr, async () => await senderWallet.balance());
 
+  console.log(senderCachedUtxos);
+
   // create raw transaction
   const txInfo = {
-    txIn: senderCachedUtxos.utxo,
+    txIn: senderCachedUtxos.utxos,
     // txIn: ccli.queryUtxo(senderWallet.paymentAddr),
     txOut: [
       // value going back to senderWallet
@@ -53,5 +55,5 @@ export default async function sendOneToMany(senderAccount: string, receiverAddre
   });
 
   // broadcast transaction
-  return ccli.transactionSubmit(txSigned);
+  // return ccli.transactionSubmit(txSigned);
 }

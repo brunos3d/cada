@@ -12,7 +12,7 @@ export default async function sendManyToOne(
   const senderCachedBalances = await Promise.all(
     senderWallets.map((senderWallet) => swr(senderWallet.paymentAddr, async () => await senderWallet.balance()))
   );
-  const senderCachedUtxos = senderCachedBalances.map((balance) => balance.utxo).flat();
+  const senderCachedUtxos = senderCachedBalances.map((balance) => balance.utxos).flat();
 
   let txInfo: TransactionBuildRaw;
 

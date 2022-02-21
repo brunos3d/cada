@@ -1,5 +1,17 @@
 version: "3.9"
 services:
+  cada:
+    container_name: cada
+    restart: always
+    build:
+      context: .
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+      - ./config:/config
+    depends_on:
+      - node
   node:
     image: "inputoutput/cardano-node:latest"
     container_name: cardano-node
@@ -9,8 +21,8 @@ services:
     ports:
       - ${NODE_PORT}
     volumes:
-        - ./data:/data
-        - ./config:/config
+      - ./data:/data
+      - ./config:/config
     tmpfs:
       - /ipc
     network_mode: host

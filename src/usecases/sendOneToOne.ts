@@ -16,7 +16,7 @@ export default async function sendOneToOne(
 
   if (fullBalance) {
     txInfo = {
-      txIn: senderCachedUtxos.utxo,
+      txIn: senderCachedUtxos.utxos,
       // txIn: ccli.queryUtxo(senderWallet.paymentAddr),
       txOut: [
         // value going to receiver
@@ -33,7 +33,7 @@ export default async function sendOneToOne(
 
     // create raw transaction
     txInfo = {
-      txIn: senderCachedUtxos.utxo,
+      txIn: senderCachedUtxos.utxos,
       // txIn: ccli.queryUtxo(senderWallet.paymentAddr),
       txOut: [
         // value going back to senderWallet

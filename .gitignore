@@ -107,3 +107,4 @@ data/
 data-testnet/
 config/*
 !config/.gitkeep
+localstorage/
