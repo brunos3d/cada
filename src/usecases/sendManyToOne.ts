@@ -1,18 +1,27 @@
-const ccli = require('../services/cardano-cli');
+import type { TransactionBuildRaw, TxOut } from 'cardano-cli-async/lib/models/cardano';
 
-function sendManyToOne(senderAccounts, receiverAddress, { amount, fullBalance }) {
-  const senderWallets = senderAccounts.map((senderAccount) => ccli.wallet(senderAccount));
-  const senderCachedBalances = senderWallets.map((senderWallet) => senderWallet.balance());
+import swr from '../services/swr';
+import ccli from '../services/cardano-cli';
+
+export default async function sendManyToOne(
+  senderAccounts: string[],
+  receiverAddress: string,
+  { amount, fullBalance }: { amount?: number; fullBalance?: boolean }
+) {
+  const senderWallets = await Promise.all(senderAccounts.map((senderAccount) => ccli.wallet(senderAccount)));
+  const senderCachedBalances = await Promise.all(
+    senderWallets.map((senderWallet) => swr(senderWallet.paymentAddr, async () => await senderWallet.balance()))
+  );
   const senderCachedUtxos = senderCachedBalances.map((balance) => balance.utxo).flat();
 
-  let txInfo;
+  let txInfo: TransactionBuildRaw;
 
   if (fullBalance) {
-    const txOutValue = {};
+    const txOutValue: Record<string, number> = {};
 
     senderCachedUtxos.forEach((utxo) => {
       Object.entries(utxo.value).forEach(([key, value]) => {
-        txOutValue[key] = (txOutValue[key] ?? 0) + value;
+        txOutValue[key] = (txOutValue[key] ?? 0) + (value as number);
       });
     });
 
@@ -24,7 +33,7 @@ function sendManyToOne(senderAccounts, receiverAddress, { amount, fullBalance })
         {
           address: receiverAddress,
           value: txOutValue,
-        },
+        } as TxOut,
       ],
     };
   } else {
@@ -61,10 +70,10 @@ function sendManyToOne(senderAccounts, receiverAddress, { amount, fullBalance })
     // };
   }
 
-  const raw = ccli.transactionBuildRaw(txInfo);
+  const raw = await ccli.transactionBuildRaw(txInfo);
 
   // calculate fee
-  const fee = ccli.transactionCalculateMinFee({
+  const fee = await ccli.transactionCalculateMinFee({
     ...txInfo,
     txBody: raw,
     witnessCount: 1,
@@ -74,7 +83,7 @@ function sendManyToOne(senderAccounts, receiverAddress, { amount, fullBalance })
   txInfo.txOut[0].value.lovelace -= fee;
 
   // create final transaction
-  const tx = ccli.transactionBuildRaw({ ...txInfo, fee });
+  const tx = await ccli.transactionBuildRaw({ ...txInfo, fee });
 
   // sign the transaction
   const txSigned = ccli.transactionSign({
@@ -85,5 +94,3 @@ function sendManyToOne(senderAccounts, receiverAddress, { amount, fullBalance })
   // broadcast transaction
   return ccli.transactionSubmit(txSigned);
 }
-
-module.exports = sendManyToOne;

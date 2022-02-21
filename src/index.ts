@@ -1,18 +1,19 @@
 #!/usr/bin/node
 
-require('dotenv').config();
+import 'dotenv/config';
 
-const chalk = require('chalk');
-const { Command } = require('commander');
+import chalk from 'chalk';
+import { Command } from 'commander';
 
-const ccli = require('./services/cardano-cli');
+import swr from './services/swr';
+import ccli from './services/cardano-cli';
 
-const queryTip = require('./usecases/queryTip');
-const queryTxById = require('./usecases/queryTxById');
-const createWallet = require('./usecases/createWallet');
-const sendOneToOne = require('./usecases/sendOneToOne');
-const sendOneToMany = require('./usecases/sendOneToMany');
-const sendManyToOne = require('./usecases/sendManyToOne');
+import queryTip from './usecases/queryTip';
+import queryTxById from './usecases/queryTxById';
+import createWallet from './usecases/createWallet';
+import sendOneToOne from './usecases/sendOneToOne';
+import sendOneToMany from './usecases/sendOneToMany';
+import sendManyToOne from './usecases/sendManyToOne';
 
 const program = new Command();
 
@@ -27,9 +28,9 @@ walletCmd
   .command('create')
   .description('Create new wallets from a given list of accounts')
   .argument('<accounts...>', 'Wallet account names')
-  .action((accounts) => {
-    accounts.forEach((account) => {
-      const wallet = createWallet(account);
+  .action(async (accounts: string[]) => {
+    accounts.forEach(async (account: string) => {
+      const wallet = await createWallet(account);
       console.log(chalk.green(`'${account}' wallet:`), wallet.paymentAddr);
     });
   });
@@ -38,10 +39,13 @@ walletCmd
   .command('balance')
   .description('Print the wallet balance from a given list of accounts')
   .argument('<accounts...>', 'Wallet account names')
-  .action((accounts) => {
-    accounts.forEach((account) => {
-      const wallet = ccli.wallet(account);
-      console.log(chalk.green(`'${account}' balance:`), JSON.stringify(wallet.balance(), null, 2));
+  .action(async (accounts: string[]) => {
+    accounts.forEach(async (account: string) => {
+      const wallet = await ccli.wallet(account);
+      console.log(
+        chalk.green(`'${account}' balance:`),
+        await swr(`wallet balance ${account}`, async () => JSON.stringify(await wallet.balance(), null, 2))
+      );
     });
   });
 
@@ -55,7 +59,7 @@ sendCmd
   .requiredOption('-t, --to <address>', 'The receiver wallet payment address')
   .option('-a, --amount <number>', 'The amount to send (in ADA)')
   .option('--full', 'When provided, transfers the entire balance sender to receiver')
-  .action(({ from, to, amount, full }) => {
+  .action(async ({ from, to, amount, full }) => {
     if (!amount && !full) {
       console.log(`error: required option '-a, --amount <number>' or '--full' not specified`);
       return;
@@ -63,7 +67,7 @@ sendCmd
 
     console.log(`Sending ${chalk.blue(full ? `full balance` : `${amount} ADA`)} from '${chalk.yellow(from)}' to '${chalk.yellow(to)}'`);
     try {
-      const tx = sendOneToOne(from, to, { amount, fullBalance: full });
+      const tx = await sendOneToOne(from, to, { amount, fullBalance: full });
       console.log(chalk.green(`Transaction:`), tx);
     } catch (error) {
       console.log(chalk.red(`Error:`), error);
@@ -77,8 +81,10 @@ sendCmd
   .requiredOption('-f, --from <account>', 'The sender wallet account name')
   .requiredOption('-t, --to <addresses...>', 'The receiver wallet payment addresses')
   .option('-a, --amount <number>', 'The amount to send (in ADA) from each sender wallet')
-  .action(({ from, to, amount }) => {
-    console.log(`Sending ${chalk.blue(`${amount} ADA`)} from ${chalk.yellow(from)}' to\n${to.map((addr) => `'${chalk.yellow(addr)}'`).join('\n')}`);
+  .action(async ({ from, to, amount }) => {
+    console.log(
+      `Sending ${chalk.blue(`${amount} ADA`)} from ${chalk.yellow(from)}' to\n${to.map((addr: string) => `'${chalk.yellow(addr)}'`).join('\n')}`
+    );
     try {
       const tx = sendOneToMany(from, to, amount);
       console.log(chalk.green(`Transaction:`), tx);
@@ -95,7 +101,7 @@ sendCmd
   .requiredOption('-t, --to <address>', 'The receiver wallet payment address')
   .option('-a, --amount <number>', 'The amount to send (in ADA)')
   .option('--full', 'When provided, transfers the entire balance of each sender to receiver')
-  .action(({ from: fromAccounts, to, amount, full }) => {
+  .action(async ({ from: fromAccounts, to, amount, full }) => {
     if (!amount && !full) {
       console.log(`error: required option '-a, --amount <number>' or '--full' not specified`);
       return;
@@ -103,11 +109,11 @@ sendCmd
 
     console.log(
       `Sending ${chalk.blue(full ? `full balance` : `${amount} ADA`)} from ${fromAccounts
-        .map((addr) => `'${chalk.yellow(addr)}'`)
+        .map((addr: string) => `'${chalk.yellow(addr)}'`)
         .join(', ')} to '${chalk.yellow(to)}'`
     );
 
-    fromAccounts.forEach((account) => {
+    fromAccounts.forEach(async (account: string) => {
       try {
         const tx = sendOneToOne(account, to, { amount, fullBalance: full });
         console.log(chalk.green(`Transaction ${account}:`), tx);
@@ -125,7 +131,7 @@ sendCmd
   .requiredOption('-t, --to <address>', 'The receiver wallet payment address')
   .option('-a, --amount <number>', 'The amount to send (in ADA)')
   .option('--full', 'When provided, transfers the entire balance of each sender to receiver')
-  .action(({ from: fromAccounts, to, amount, full }) => {
+  .action(async ({ from: fromAccounts, to, amount, full }) => {
     if (!amount && !full) {
       console.log(`error: required option '-a, --amount <number>' or '--full' not specified`);
       return;
@@ -133,7 +139,7 @@ sendCmd
 
     console.log(
       `Sending ${chalk.blue(full ? `full balance` : `${amount} ADA`)} from ${fromAccounts
-        .map((addr) => `'${chalk.yellow(addr)}'`)
+        .map((addr: string) => `'${chalk.yellow(addr)}'`)
         .join(', ')} to '${chalk.yellow(to)}'`
     );
 
@@ -159,8 +165,8 @@ transactionCmd
 program
   .command('status')
   .description('Make a simple query tip to the current cardano-node')
-  .action(() => {
-    console.log(queryTip());
+  .action(async () => {
+    console.log(await queryTip());
   });
 
 program.parse();

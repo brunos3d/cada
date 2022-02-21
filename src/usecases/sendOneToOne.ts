@@ -1,10 +1,18 @@
-const ccli = require('../services/cardano-cli');
+import type { TransactionBuildRaw } from 'cardano-cli-async/lib/models/cardano';
 
-function sendOneToOne(senderAccount, receiverAddress, { amount, fullBalance }) {
-  const senderWallet = ccli.wallet(senderAccount);
-  const senderCachedUtxos = senderWallet.balance();
+import swr from '../services/swr';
+import ccli from '../services/cardano-cli';
+import { toLovelace } from '../helpers/utils';
 
-  let txInfo;
+export default async function sendOneToOne(
+  senderAccount: string,
+  receiverAddress: string,
+  { amount, fullBalance }: { amount?: number; fullBalance?: boolean }
+) {
+  const senderWallet = await ccli.wallet(senderAccount);
+  const senderCachedUtxos = await swr(senderWallet.paymentAddr, async () => await senderWallet.balance());
+
+  let txInfo: TransactionBuildRaw;
 
   if (fullBalance) {
     txInfo = {
@@ -20,8 +28,8 @@ function sendOneToOne(senderAccount, receiverAddress, { amount, fullBalance }) {
         },
       ],
     };
-  } else {
-    const transferAmountLovelace = ccli.toLovelace(amount);
+  } else if (amount) {
+    const transferAmountLovelace = toLovelace(amount);
 
     // create raw transaction
     txInfo = {
@@ -44,12 +52,14 @@ function sendOneToOne(senderAccount, receiverAddress, { amount, fullBalance }) {
         },
       ],
     };
+  } else {
+    throw new Error('Amount or fullBalance is required');
   }
 
-  const raw = ccli.transactionBuildRaw(txInfo);
+  const raw = await ccli.transactionBuildRaw(txInfo);
 
   // calculate fee
-  const fee = ccli.transactionCalculateMinFee({
+  const fee = await ccli.transactionCalculateMinFee({
     ...txInfo,
     txBody: raw,
     witnessCount: 1,
@@ -59,10 +69,10 @@ function sendOneToOne(senderAccount, receiverAddress, { amount, fullBalance }) {
   txInfo.txOut[0].value.lovelace -= fee;
 
   // create final transaction
-  const tx = ccli.transactionBuildRaw({ ...txInfo, fee });
+  const tx = await ccli.transactionBuildRaw({ ...txInfo, fee });
 
   // sign the transaction
-  const txSigned = ccli.transactionSign({
+  const txSigned = await ccli.transactionSign({
     txBody: tx,
     signingKeys: [senderWallet.payment.skey],
   });
@@ -70,5 +80,3 @@ function sendOneToOne(senderAccount, receiverAddress, { amount, fullBalance }) {
   // broadcast transaction
   return ccli.transactionSubmit(txSigned);
 }
-
-module.exports = sendOneToOne;

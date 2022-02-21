@@ -1,6 +1,6 @@
-const fetch = require('node-fetch');
+import fetch from '../services/fetch';
 
-async function queryTxById(id) {
+export default async function queryTxById(id: string) {
   const response = await fetch('https://explorer.cardano.org/graphql', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -15,7 +15,5 @@ async function queryTxById(id) {
 
   if (!response.ok) return null;
 
-  return (await response.json()).data.transactions;
+  return ((await response.json()) as any).data.transactions;
 }
-
-module.exports = queryTxById;

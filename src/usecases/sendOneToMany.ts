@@ -1,10 +1,13 @@
-const ccli = require('../services/cardano-cli');
+import swr from '../services/swr';
+import ccli from '../services/cardano-cli';
 
-function sendOneToMany(senderAccount, receiverAddresses, amount) {
-  const transferAmountLovelace = ccli.toLovelace(amount);
+import { toLovelace } from '../helpers/utils';
 
-  const senderWallet = ccli.wallet(senderAccount);
-  const senderCachedUtxos = senderWallet.balance();
+export default async function sendOneToMany(senderAccount: string, receiverAddresses: string[], amount: number) {
+  const transferAmountLovelace = toLovelace(amount);
+
+  const senderWallet = await ccli.wallet(senderAccount);
+  const senderCachedUtxos = await swr(senderWallet.paymentAddr, async () => await senderWallet.balance());
 
   // create raw transaction
   const txInfo = {
@@ -28,10 +31,10 @@ function sendOneToMany(senderAccount, receiverAddresses, amount) {
     ],
   };
 
-  const raw = ccli.transactionBuildRaw(txInfo);
+  const raw = await ccli.transactionBuildRaw(txInfo);
 
   // calculate fee
-  const fee = ccli.transactionCalculateMinFee({
+  const fee = await ccli.transactionCalculateMinFee({
     ...txInfo,
     txBody: raw,
     witnessCount: 1,
@@ -41,10 +44,10 @@ function sendOneToMany(senderAccount, receiverAddresses, amount) {
   txInfo.txOut[0].value.lovelace -= fee;
 
   // create final transaction
-  const tx = ccli.transactionBuildRaw({ ...txInfo, fee });
+  const tx = await ccli.transactionBuildRaw({ ...txInfo, fee });
 
   // sign the transaction
-  const txSigned = ccli.transactionSign({
+  const txSigned = await ccli.transactionSign({
     txBody: tx,
     signingKeys: [senderWallet.payment.skey],
   });
@@ -52,5 +55,3 @@ function sendOneToMany(senderAccount, receiverAddresses, amount) {
   // broadcast transaction
   return ccli.transactionSubmit(txSigned);
 }
-
-module.exports = sendOneToMany;

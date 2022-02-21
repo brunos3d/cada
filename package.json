@@ -1,24 +1,32 @@
 {
   "name": "cada",
   "version": "1.0.0",
-  "type": "commonjs",
   "license": "MIT",
-  "main": "./src/index.js",
+  "main": "./dist/index.js",
   "bin": {
-    "cada": "./src/index.js"
+    "cada": "./dist/index.js"
   },
   "scripts": {
-    "start": "env-cmd -f .env node ./src/index.js",
-    "status": "env-cmd -f .env node ./src/examples/queryTip.js",
+    "dev": "tsnd --transpile-only --respawn --no-notify --ignore-watch node_modules ./src/index.ts",
+    "build": "yarn tsc",
+    "deploy": "yarn && yarn build && yarn start",
+    "start": "env-cmd -f .env node ./dist/index.js",
     "docker": "docker-compose --env-file .env -f docker-compose.yml up -d --build"
   },
   "dependencies": {
+    "cardano-cli-async": "git+ssh://git@github.com:BrunoS3D/cardano-cli-async.git",
     "chalk": "2.4.1",
     "commander": "^9.0.0",
-    "commander-completion": "^1.0.1",
     "dotenv": "^14.3.2",
     "env-cmd": "^10.1.0",
-    "node-fetch": "2.0.0",
-    "sync-fetch": "^0.3.1"
+    "node-fetch": "^3.2.0",
+    "node-localstorage": "^2.2.1",
+    "stale-while-revalidate-cache": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.18",
+    "@types/node-localstorage": "^1.3.0",
+    "ts-node-dev": "^1.1.8",
+    "typescript": "^4.5.5"
   }
 }
